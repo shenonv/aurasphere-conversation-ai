@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from supabase import create_client, Client 
 from dotenv import load_dotenv
 from pydantic import BaseModel
+from tasks import process_audio_task
 
 load_dotenv()
 
@@ -38,7 +39,7 @@ def notify_upload(notification: UploadNotification):
 
         upload_id = response.data[0]['id']
 
-        # TODO: Add processing logic here
+        process_audio_task.delay(upload_id)
         print(f"Upload record created with ID: {upload_id}. ready to process")
         
         return {"message": "Upload recorded, processing started", "upload_id": upload_id}
