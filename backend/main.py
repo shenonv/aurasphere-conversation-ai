@@ -22,8 +22,11 @@ def read_root():
     return {"Server is running"}
 
 @app.post("/uploads/initiate")
-def initiate_upload():
-    unique_file_name = f"audio_{os.urandom(8).hex()}.mp3"
+def initiate_upload(file_type: str = "audio"):
+    if file_type == "video":
+        unique_file_name = f"video_{os.urandom(8).hex()}.mp4"
+    else:
+        unique_file_name = f"audio_{os.urandom(8).hex()}.mp3"
     return {"message": "Upload initiated", "storage_path": unique_file_name}
 
 @app.post("/uploads/notify")

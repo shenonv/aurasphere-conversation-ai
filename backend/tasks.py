@@ -5,6 +5,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from transformers import pipeline # NEW: Import the pipeline helper
 import nltk # NEW: Import for sentence splitting
+import subprocess # NEW: For video processing
 
 # --- SETUP ---
 load_dotenv()
@@ -48,9 +49,21 @@ def process_audio_task(upload_id: str):
             f.write(res)
         print("File downloaded.")
 
+        # Check if it's a video file and extract audio
+        audio_path = local_path
+        if storage_path.endswith(('.mp4', '.mov', '.avi', '.mkv')):
+            print("Video file detected, extracting audio...")
+            audio_path = f"/tmp/{os.path.splitext(os.path.basename(storage_path))[0]}_audio.wav"
+            # Use ffmpeg to extract audio from video
+            subprocess.run([
+                'ffmpeg', '-i', local_path, '-vn', '-acodec', 'pcm_s16le', 
+                '-ar', '16000', '-ac', '1', '-y', audio_path
+            ], check=True, capture_output=True)
+            print("Audio extracted from video.")
+
         # 2. Transcribe with Whisper AI (Same as before)
         print("Transcribing audio...")
-        result = transcription_model.transcribe(local_path, fp16=False)
+        result = transcription_model.transcribe(audio_path, fp16=False)
         transcript = result["text"]
         print("Transcription complete.")
         
@@ -101,6 +114,8 @@ def process_audio_task(upload_id: str):
         supabase.table("uploads").update({"status": "failed"}).eq("id", upload_id).execute()
     
     finally:
-        # 6. Clean up the downloaded file (Same as before)
+        # 6. Clean up the downloaded files
         if local_path and os.path.exists(local_path):
             os.remove(local_path)
+        if 'audio_path' in locals() and audio_path != local_path and os.path.exists(audio_path):
+            os.remove(audio_path)
